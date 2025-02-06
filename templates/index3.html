@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SilverMail</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2196F3;
+            --background-color: #f5f5f5;
+        }
+        
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #fafafa;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .email-box {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .email {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        button {
+            background: var(--primary-color);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: #1976D2;
+            transform: translateY(-1px);
+        }
+        
+        .email-body {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+        }
+        
+        .refresh-info {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📧 SilverMail</h1>
+        <p>Temporary Email Service</p>
+    </div>
+    
+    <div class="email-box">
+        <div id="email-display">
+            {% if email %}
+                <h2>Your Temporary Email:</h2>
+                <div class="current-email" id="current-email">{{ email }}</div>
+                <p>Generated at: <span id="generated-time">{{ generated_time }}</span></p>
+            {% else %}
+                <p>No active email address. Generate one now!</p>
+            {% endif %}
+        </div>
+        
+        <div class="controls">
+            <button id="generate-btn">Generate New Email</button>
+            <button id="refresh-btn">Manual Refresh</button>
+        </div>
+        <p class="refresh-info">Auto-refreshing every 2 seconds...</p>
+    </div>
+
+    <h2>📨 Incoming Emails:</h2>
+    <div id="emails-container"></div>
+
+    <script>
+        let refreshInterval = 2000;
+        let refreshTimer = null;
+        
+        function updateEmailDisplay(email, time) {
+            const emailHtml = `
+                <h2>Your Temporary Email:</h2>
+                <div class="current-email" id="current-email">${email}</div>
+                <p>Generated at: <span id="generated-time">${time}</span></p>
+            `;
+            $('#email-display').html(emailHtml);
+        }
+
+        let storedEmails = []; // Variabel untuk menyimpan data email yang sudah didapat
+
+function loadEmails() {
+    $.ajax({
+        url: '/emails',
+        method: 'GET',
+        dataType: 'json',
+        success: function(emails) {
+            if (emails.length > 0) {
+                storedEmails = emails; // Update data hanya jika ada data baru
+            }
+            
+            renderEmails();
+        },
+        error: function(xhr) {
+            console.error('Error loading emails:', xhr.statusText);
+            renderEmails(); // Tetap render email dari storedEmails jika ada error
+        }
+    });
+}
+
+function renderEmails() {
+    $('#emails-container').empty();
+    
+    if (storedEmails.length === 0) {
+        $('#emails-container').append(
+            '<div class="email">No emails received yet</div>'
+        );
+    } else {
+        storedEmails.forEach(function(email) {
+            const emailHtml = `
+                <div class="email" data-id="${email.id}">
+                    <h3>${email.subject}</h3>
+                    <p><strong>From:</strong> ${email.from}</p>
+                    <p><strong>Date:</strong> ${email.date}</p>
+                    <div class="email-body">
+                        ${email.body.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+                    </div>
+                </div>`;
+            $('#emails-container').append(emailHtml);
+        });
+    }
+}
+
+// Event listener untuk tombol reset
+$('#generate-btn').on('click', function() {
+    storedEmails = []; // Hapus data yang tersimpan
+    renderEmails(); // Perbarui tampilan
+});
+
+
+        $('#generate-btn').click(function() {
+            $.ajax({
+                url: '/generate',
+                method: 'POST',
+                success: function(response) {
+                    if(response.email) {
+                        updateEmailDisplay(response.email, new Date().toLocaleString());
+                        sessionStorage.setItem('currentEmail', response.email);
+                        loadEmails(); // Paksa refresh langsung
+                    }
+                },
+                error: function(xhr) {
+                    alert('Error generating email: ' + xhr.responseJSON.error);
+                }
+            });
+        });
+
+        $('#refresh-btn').click(function() {
+            clearInterval(refreshTimer);
+            loadEmails();
+            refreshTimer = setInterval(loadEmails, refreshInterval);
+        });
+
+        // Inisialisasi
+        $(document).ready(function() {
+            // Ambil email dari session jika ada
+            const savedEmail = "{{ email }}";
+            if(savedEmail) {
+                updateEmailDisplay(savedEmail, "{{ generated_time }}");
+            }
+            
+            // Auto-refresh
+            refreshTimer = setInterval(loadEmails, refreshInterval);
+            loadEmails();
+        });
+    </script>
+</body>
+</html>

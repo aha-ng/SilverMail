@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SilverMail</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2196F3;
+            --background-color: #f5f5f5;
+        }
+        
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #fafafa;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .email-box {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .email {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        button {
+            background: var(--primary-color);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: #1976D2;
+            transform: translateY(-1px);
+        }
+        
+        .email-body {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+        }
+        
+        .refresh-info {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+        
+        .copy-btn {
+            background: #4CAF50;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: 10px;
+            transition: all 0.3s;
+        }
+        
+        .copy-btn:hover {
+            background: #45a049;
+        }
+        
+        .watermark {
+            text-align: center;
+            margin-top: 40px;
+            color: #888;
+            font-size: 0.9em;
+        }
+
+        .subject-copy-btn {
+            background: #ff9800;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 8px;
+            vertical-align: middle;
+            transition: all 0.3s;
+        }
+
+        .subject-copy-btn:hover {
+            background: #f57c00;
+        }
+
+        .subject-copy-btn i {
+            margin-right: 5px;
+        }
+        
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            
+            .email-box {
+                padding: 15px;
+            }
+            
+            button {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            
+            .copy-btn {
+                width: auto;
+                margin-left: 0;
+                margin-top: 10px;
+            }
+            
+            .subject-copy-btn {
+                background: #ff9800;
+                color: white;
+                padding: 5px 10px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+                margin-left: 8px;
+                vertical-align: middle;
+                transition: all 0.3s;
+            }
+
+            .subject-copy-btn:hover {
+                background: #f57c00;
+            }
+
+            .subject-copy-btn i {
+                margin-right: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📧 SilverMail</h1>
+        <p>Layanan Email Sementara</p>
+    </div>
+    
+    <div class="email-box">
+        <div id="email-display">
+            {% if email %}
+                <h2>Email Sementara Anda:</h2>
+                <div class="current-email" id="current-email">{{ email }}</div>
+                <br>
+                <button class="copy-btn" onclick="copyEmail()"><i class="fas fa-copy"></i> Salin Email</button>
+                <p>Dibuat pada: <span id="generated-time">{{ generated_time }}</span></p>
+            {% else %}
+                <p>Tidak ada alamat email aktif. Buat sekarang!</p>
+            {% endif %}
+        </div>
+        
+        <div class="controls">
+            <button id="generate-btn">Buat Email Baru</button>
+            <button id="refresh-btn">Muat Ulang Manual</button>
+        </div>
+        <p class="refresh-info">Muat ulang otomatis setiap 2 detik...</p>
+    </div>
+
+    <h2>📨 Email Masuk:</h2>
+    <div id="emails-container"></div>
+
+    <div class="watermark">
+        Created by SilverWolf
+    </div>
+
+    <script>
+        let refreshInterval = 2000;
+        let refreshTimer = null;
+        
+        function updateEmailDisplay(email, time) {
+            const emailHtml = `
+                <h2>Email Sementara Anda:</h2>
+                <div class="current-email" id="current-email">${email}</div>
+                <button class="copy-btn" onclick="copyEmail()"><i class="fas fa-copy"></i> Salin Email</button>
+                <p>Dibuat pada: <span id="generated-time">${time}</span></p>
+            `;
+            $('#email-display').html(emailHtml);
+        }
+
+        function copyEmail() {
+            const email = $('#current-email').text().trim();
+            
+            // Fallback method untuk browser lama
+            const textarea = document.createElement('textarea');
+            textarea.value = email;
+            document.body.appendChild(textarea);
+            
+            try {
+                // Method modern
+                if(navigator.clipboard) {
+                    navigator.clipboard.writeText(email).then(() => {
+                        showFeedback('📋 Email berhasil disalin!');
+                    }).catch(err => {
+                        useFallbackCopy(textarea);
+                    });
+                } else {
+                    useFallbackCopy(textarea);
+                }
+            } catch (err) {
+                useFallbackCopy(textarea);
+            } finally {
+                document.body.removeChild(textarea);
+            }
+        }
+
+        function useFallbackCopy(element) {
+            element.select();
+            try {
+                document.execCommand('copy');
+                showFeedback('📋 Email berhasil disalin (fallback)!');
+            } catch (err) {
+                showFeedback('❌ Gagal menyalin email', true);
+            }
+        }
+
+        function showFeedback(message, isError = false) {
+            const feedback = document.createElement('div');
+            feedback.style = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px;
+                background: ${isError ? '#ff4444' : '#4CAF50'};
+                color: white;
+                border-radius: 5px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                z-index: 1000;
+                animation: slideIn 0.3s ease-out;
+            `;
+            feedback.textContent = message;
+            
+            document.body.appendChild(feedback);
+            setTimeout(() => {
+                feedback.remove();
+            }, 3000);
+        }
+
+        let storedEmails = []; // Variabel untuk menyimpan data email yang sudah didapat
+
+        function loadEmails() {
+            $.ajax({
+                url: '/emails',
+                method: 'GET',
+                dataType: 'json',
+                success: function(emails) {
+                    if (emails.length > 0) {
+                        storedEmails = emails; // Update data hanya jika ada data baru
+                    }
+                    
+                    renderEmails();
+                },
+                error: function(xhr) {
+                    console.error('Error loading emails:', xhr.statusText);
+                    renderEmails(); // Tetap render email dari storedEmails jika ada error
+                }
+            });
+        }
+
+        function renderEmails() {
+            $('#emails-container').empty();
+            
+            if (storedEmails.length === 0) {
+                $('#emails-container').append(
+                    '<div class="email">Belum ada email yang diterima</div>'
+                );
+            } else {
+                storedEmails.forEach(function(email) {
+                    const emailHtml = `
+                        <div class="email" data-id="${email.id}">
+                            <h3>
+                                ${email.subject}
+                                <button class="subject-copy-btn" onclick="copyFirstWord('${email.subject.replace(/'/g, "\\'")}')">
+                                    <i class="fas fa-copy"></i> Salin Kode Verifikasi
+                                </button>
+                            </h3>
+                            <p><strong>Dari:</strong> ${email.from}</p>
+                            <p><strong>Tanggal:</strong> ${email.date}</p>
+                            <div class="email-body">
+                                ${email.body.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+                            </div>
+                        </div>`;
+                    $('#emails-container').append(emailHtml);
+                });
+            }
+        }
+
+        function copyFirstWord(subject) {
+            const firstWord = subject.trim().split(/\s+/)[0] || '';
+            const textarea = document.createElement('textarea');
+            textarea.value = firstWord;
+            document.body.appendChild(textarea);
+            
+            try {
+                textarea.select();
+                document.execCommand('copy');
+                showFeedback('📋 Kata pertama berhasil disalin: ' + firstWord);
+            } catch (err) {
+                showFeedback('❌ Gagal menyalin kata pertama', true);
+            } finally {
+                document.body.removeChild(textarea);
+            }
+        }
+
+        $('#generate-btn').click(function() {
+            $.ajax({
+                url: '/generate',
+                method: 'POST',
+                success: function(response) {
+                    if(response.email) {
+                        updateEmailDisplay(response.email, new Date().toLocaleString());
+                        sessionStorage.setItem('currentEmail', response.email);
+                        loadEmails(); // Paksa refresh langsung
+                    }
+                },
+                error: function(xhr) {
+                    alert('Gagal membuat email: ' + xhr.responseJSON.error);
+                }
+            });
+        });
+
+        $('#refresh-btn').click(function() {
+            clearInterval(refreshTimer);
+            loadEmails();
+            refreshTimer = setInterval(loadEmails, refreshInterval);
+        });
+
+        // Inisialisasi
+        $(document).ready(function() {
+            // Ambil email dari session jika ada
+            const savedEmail = "{{ email }}";
+            if(savedEmail) {
+                updateEmailDisplay(savedEmail, "{{ generated_time }}");
+            }
+            
+            // Auto-refresh
+            refreshTimer = setInterval(loadEmails, refreshInterval);
+            loadEmails();
+        });
+    </script>
+</body>
+</html>
