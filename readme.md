@@ -106,3 +106,38 @@ pip3 install -r requirements.txt
 ```
 gunicorn app:app -b 0.0.0.0:80 -w 4 --preload
 ```
+
+## Autorun on start
+### 1. Buat File Service
+```
+nano /etc/systemd/system/silvermail.service
+```
+Isi file service
+```
+[Unit]
+Description=SilverMail Gunicorn Service
+After=network.target
+
+[Service]
+User=root
+Group=root
+WorkingDirectory=/root/SilverMail
+ExecStart=/usr/local/bin/gunicorn app:app -b 0.0.0.0:80 -w 4 --preload
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### 2. Reload
+```
+systemctl daemon-reload
+systemctl enable silvermail
+systemctl start silvermail
+```
+
+### 3. Cek Status
+```
+systemctl status silvermail
+```
+
