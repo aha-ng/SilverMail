@@ -190,7 +190,7 @@
     <div id="emails-container"></div>
 
     <div class="watermark">
-        Created by SilverWolf
+        Created by AHA-NG
     </div>
 
     <script>
@@ -265,7 +265,7 @@
             }, 3000);
         }
 
-        let storedEmails = []; // Variabel untuk menyimpan data email yang sudah didapat
+        let storedEmails = [];
 
         function loadEmails() {
             $.ajax({
@@ -274,14 +274,14 @@
                 dataType: 'json',
                 success: function(emails) {
                     if (emails.length > 0) {
-                        storedEmails = emails; // Update data hanya jika ada data baru
+                        storedEmails = emails;
                     }
                     
                     renderEmails();
                 },
                 error: function(xhr) {
                     console.error('Error loading emails:', xhr.statusText);
-                    renderEmails(); // Tetap render email dari storedEmails jika ada error
+                    renderEmails();
                 }
             });
         }
